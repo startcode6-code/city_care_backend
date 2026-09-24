@@ -3,9 +3,9 @@ import { signUp } from "../../services/auth/auth.service";
 
 export async function signUpController(req: Request, res: Response){
     try {
-        const { name, email, password } = req.body;
+        const { name, email, phoneNumber, password } = req.body;
 
-        const result = await signUp({ name, email, password});
+        const result = await signUp({ name, email, phoneNumber, password});
         
         return res.status(201).json({
             success: true,

@@ -9,17 +9,22 @@ import { comparePasswords, generateAccessToken, generateRefreshToken, hashPasswo
 type SignUpInput = {
   name: string;  
   email: string;
+  phoneNumber: string;
   password: string;
 };
 
 export async function signUp(input: SignUpInput) {
 
-    const { name, email, password } = input;
+    const { name, email, phoneNumber, password } = input;
 
     const existingUser = await db.select().from(users).where(eq(users.email, email)).limit(1);
 
     if(existingUser.length > 0){
         throw new Error("User with this email already exists.");
+    }
+
+    if(phoneNumber == null || phoneNumber == undefined){
+        throw new Error("Phone number is required.");
     }
 
     const passwordHash = await hashPassword(password);
@@ -28,11 +33,13 @@ export async function signUp(input: SignUpInput) {
         id: crypto.randomUUID(),
         name,
         email,
+        phoneNumber,
         passwordHash,
     }).returning({
         id: users.id,
         name: users.name,
         email: users.email,
+        phoneNumber: users.phoneNumber, 
     });
 
     if (!user) {
@@ -46,9 +53,7 @@ export async function signUp(input: SignUpInput) {
 
     const tokenHash = createHash("sha256").update(refreshToken).digest("hex");
 
-      const expiresAt = new Date(
-         Date.now() + 30 * 24 * 60 * 60 * 1000
-        ); // 30 days from now
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000 ); // 30 days from now
 
     await db.insert(sessions).values({
         id: crypto.randomUUID(),
