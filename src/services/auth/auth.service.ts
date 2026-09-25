@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../../db";
 import { sessions } from "../../db/schema/sessions";
 import { users } from "../../db/schema/user";   
+import { AppError } from "../../lib/error";
 
 import { comparePasswords, generateAccessToken, generateRefreshToken, hashPassword } from "../../lib/auth"; 
 
@@ -11,6 +12,8 @@ type SignUpInput = {
   email: string;
   phoneNumber: string;
   password: string;
+  deviceInfo?: string;
+  ipAddress?: string;
 };
 
 export async function signUp(input: SignUpInput) {
@@ -20,11 +23,7 @@ export async function signUp(input: SignUpInput) {
     const existingUser = await db.select().from(users).where(eq(users.email, email)).limit(1);
 
     if(existingUser.length > 0){
-        throw new Error("User with this email already exists.");
-    }
-
-    if(phoneNumber == null || phoneNumber == undefined){
-        throw new Error("Phone number is required.");
+        throw new AppError("Email already exists.", 409);
     }
 
     const passwordHash = await hashPassword(password);
@@ -53,7 +52,7 @@ export async function signUp(input: SignUpInput) {
 
     const tokenHash = createHash("sha256").update(refreshToken).digest("hex");
 
-      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000 ); // 30 days from now
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000 ); // 30 days from now
 
     await db.insert(sessions).values({
         id: crypto.randomUUID(),
@@ -61,8 +60,12 @@ export async function signUp(input: SignUpInput) {
         tokenHash,
         sessionVersion,
         expiresAt,
+        deviceInfo: input.deviceInfo || "Unknown", 
+        ipAddress: input.ipAddress || "Unknown",
     });
 
     return { user, accessToken, refreshToken };   
  
 }
+
+

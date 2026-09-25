@@ -29,6 +29,13 @@
       "when": 1790271059697,
       "tag": "0003_furry_wallop",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790336257515,
+      "tag": "0004_friendly_jetstream",
+      "breakpoints": true
     }
   ]
 }

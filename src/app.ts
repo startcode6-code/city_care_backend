@@ -1,12 +1,13 @@
 import express from "express";
 import cors from "cors";
-
 import authRoutes from "./routes/auth/auth.routes";
+import { errorHandler } from "./middleware/error-handler";
 
 const app = express();
 
 // Middlewares
 app.use(cors());
+app.use(errorHandler);
 app.use(express.json());
 
 // Health check
