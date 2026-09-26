@@ -36,6 +36,13 @@
       "when": 1790336257515,
       "tag": "0004_friendly_jetstream",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790449056915,
+      "tag": "0005_sparkling_titanium_man",
+      "breakpoints": true
     }
   ]
 }

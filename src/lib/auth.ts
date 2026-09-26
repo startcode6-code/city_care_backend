@@ -20,7 +20,7 @@ export function generateAccessToken(payload: {
   sessionVersion: number;
 }) {
 
-  return jwt.sign(payload, JWT_SECRET as string, { expiresIn: "15m", });
+  return jwt.sign(payload, JWT_SECRET as string, { expiresIn: "2m", });
 
 }
 
@@ -30,4 +30,13 @@ export function generateRefreshToken(payload: {
   sessionVersion: number;
 }) {
   return jwt.sign(payload, JWT_SECRET as string, { expiresIn: "30d", });
+}
+
+export function verifyRefeshToken(token: string): { userId: string; sessionVersion: number } {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET as string) as { userId: string; sessionVersion: number };
+    return decoded;
+  } catch (error) {
+    throw new Error("Invalid refresh token.");
+  }
 }

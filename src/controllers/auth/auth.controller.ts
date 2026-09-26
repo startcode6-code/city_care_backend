@@ -1,12 +1,14 @@
 import type { Request, Response } from "express";
-import { signUp } from "../../services/auth/auth.service";
+import { signUp, refreshaccessToken } from "../../services/auth/auth.service";
 import { AppError } from "../../lib/error";
 import { signUpSchema } from "../../schemas/auth/auth.schema.ts";
+import { success } from "zod";
+
 
 
 export async function signUpController(req: Request, res: Response){
     try {
-        const { name, email, phoneNumber, password } = req.body;
+        const { name, email, phoneNumber,  } = req.body;
 
         const validation = signUpSchema.safeParse(req.body);
 
@@ -22,12 +24,14 @@ export async function signUpController(req: Request, res: Response){
             });
         }
 
-        const result = await signUp({ name, email, phoneNumber, password, deviceInfo: req.headers["user-agent"], ipAddress: req.ip });
+        const result = await signUp({ name, email, phoneNumber, deviceInfo: req.headers["user-agent"], ipAddress: req.ip });
         
         return res.status(201).json({
             success: true,
             message: "User registered successfully",
             data: result.user,
+            accessToken: result.accessToken,
+            refreshToken: result.refreshToken,
         });
 
     } catch (error) {
@@ -47,4 +51,25 @@ export async function signUpController(req: Request, res: Response){
         });
 
     }
+}
+
+export async function refreshTokenController(req: Request, res: Response) {
+    const { refreshToken } = req.body;
+
+    if(!refreshToken){
+        return res.status(400).json(
+            {
+                success: false,
+                message: "Refresh token is required"
+            }
+        )
+    }
+
+    const result = await refreshaccessToken(refreshToken);
+
+    return res.status(200).json({
+        success: true,
+        message: "Access token refreshed successfuly",
+        accessToken: result.accessToken
+    })
 }
