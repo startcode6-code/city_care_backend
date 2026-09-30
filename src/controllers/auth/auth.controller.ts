@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { signUp, refreshaccessToken } from "../../services/auth/auth.service";
+import { signUp, refreshaccessToken, getMyProfile } from "../../services/auth/auth.service";
 import { AppError } from "../../lib/error";
 import { signUpSchema } from "../../schemas/auth/auth.schema.ts";
 import { success } from "zod";
@@ -72,4 +72,30 @@ export async function refreshTokenController(req: Request, res: Response) {
         message: "Access token refreshed successfuly",
         accessToken: result.accessToken
     })
+}
+
+
+export async function getProfiel(req: Request, res: Response) {
+    
+    try{
+
+    const user = await getMyProfile(req.user!.id)    
+
+    if (!user) {
+    return res.status(404).json({
+      success: false,
+      message: "User not found",
+    });
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: "User profile fetched successfully",
+    data: user,
+  });
+
+    }catch(error){
+        console.log(error);
+
+    }
 }
