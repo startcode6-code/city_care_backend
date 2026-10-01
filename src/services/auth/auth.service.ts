@@ -38,7 +38,7 @@ export async function signUp(input: SignUpInput) {
 
         const sessionVersion = 1;
         const accessToken = generateAccessToken({ userId: user.id, sessionVersion, sessionId });
-        const refreshToken = generateRefreshToken({ userId: user.id, sessionVersion });
+        const refreshToken = generateRefreshToken({ userId: user.id, sessionVersion, sessionId });
 
         const tokenHash = createHash("sha256").update(refreshToken).digest("hex");
 
@@ -79,7 +79,7 @@ export async function signUp(input: SignUpInput) {
     const sessionVersion = 1;
 
     const accessToken = generateAccessToken({ userId: user.id, sessionVersion, sessionId });
-    const refreshToken = generateRefreshToken({ userId: user.id, sessionVersion });
+    const refreshToken = generateRefreshToken({ userId: user.id, sessionVersion,sessionId });
 
     const tokenHash = createHash("sha256").update(refreshToken).digest("hex");
 
@@ -126,7 +126,7 @@ export async function refreshaccessToken(oldRefreshToken: string) {
         throw new AppError("Refresh token has expired.", 401);
     }
 
-    const accessToken = generateAccessToken({userId: payload.userId, sessionVersion: payload.sessionVersion,sessionId})
+    const accessToken = generateAccessToken({userId: payload.userId, sessionVersion: payload.sessionVersion, sessionId: payload.sessionId});
 
     return{
         accessToken,

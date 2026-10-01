@@ -29,14 +29,15 @@ export function generateAccessToken(payload: {
 export function generateRefreshToken(payload: {
   userId: string;
   sessionVersion: number;
+  sessionId: string;
 }) {
   return jwt.sign(payload, JWT_SECRET as string, { expiresIn: "30d", });
 }
 
 
-export function verifyRefeshToken(token: string): { userId: string; sessionVersion: number } {
+export function verifyRefeshToken(token: string): { userId: string; sessionVersion: number; sessionId: string } {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET as string) as { userId: string; sessionVersion: number };
+    const decoded = jwt.verify(token, JWT_SECRET as string) as { userId: string; sessionVersion: number; sessionId: string };
     return decoded;
   } catch (error) {
     throw new Error("Invalid refresh token.");
