@@ -9,6 +9,8 @@ const app = express();
 app.use(cors());
 app.use(errorHandler);
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 
 // Health check
 app.get("/health", (_req, res) => {
@@ -21,6 +23,8 @@ app.get("/health", (_req, res) => {
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/user", authRoutes)
+
+app.use(errorHandler);
 
 
 export default app;

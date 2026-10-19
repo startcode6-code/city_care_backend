@@ -5,7 +5,7 @@ import {
   text,
   timestamp,
 } from "drizzle-orm/pg-core";
-import { users } from "./user";
+import { users } from "./admin";
 
 
 export const sessions = pgTable("sessions", {
@@ -17,7 +17,7 @@ export const sessions = pgTable("sessions", {
   ipAddress: text("ip_address"),
   sessionVersion: integer("session_version").notNull().default(1),
   isRevoked: boolean("is_revoked").notNull().default(false),
-  revokedAt: timestamp("revoked_at", {withTimezone: true,}),
-  expiresAt: timestamp("expires_at", { withTimezone: true,}).notNull(),
-  createdAt: timestamp("created_at", {withTimezone: true,}).notNull().defaultNow(),
+  revokedAt: timestamp("revoked_at", { withTimezone: true, }),
+  expiresAt: timestamp("expires_at", { withTimezone: true, }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, }).notNull().defaultNow(),
 });

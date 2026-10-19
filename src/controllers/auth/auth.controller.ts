@@ -1,31 +1,31 @@
-import type { Request, Response } from "express";
-import { signUp, refreshaccessToken, getMyProfile } from "../../services/auth/auth.service";
+import type { Request, Response, NextFunction } from "express";
+import { signUp, loginAdmin, refreshaccessToken, getMyProfile } from "../../services/auth/auth.service";
 import { AppError } from "../../lib/error";
 import { signUpSchema } from "../../schemas/auth/auth.schema.ts";
 import { success } from "zod";
 
 
 
-export async function signUpController(req: Request, res: Response){
+export async function signUpController(req: Request, res: Response) {
     try {
-        const { name, email, phoneNumber,  } = req.body;
+        const { name, email, phoneNumber, password, role } = req.body;
 
         const validation = signUpSchema.safeParse(req.body);
 
-      if (!validation.success) {
+        if (!validation.success) {
 
-        const errors = Object.fromEntries(validation.error.issues.map(issue => [issue.path[0], issue.message]));
+            const errors = Object.fromEntries(validation.error.issues.map(issue => [issue.path[0], issue.message]));
 
 
             return res.status(400).json({
-            success: false,
-            message: "Validation failed",
-            errors: errors,
+                success: false,
+                message: "Validation failed",
+                errors: errors,
             });
         }
 
-        const result = await signUp({ name, email, phoneNumber, deviceInfo: req.headers["user-agent"], ipAddress: req.ip });
-        
+        const result = await signUp({ name, email, phoneNumber, deviceInfo: req.headers["user-agent"], ipAddress: req.ip, password, role });
+
         return res.status(201).json({
             success: true,
             message: "User registered successfully",
@@ -37,7 +37,7 @@ export async function signUpController(req: Request, res: Response){
     } catch (error) {
         console.error("Error in signUpController:", error);
 
-        if(error instanceof AppError) {
+        if (error instanceof AppError) {
             return res.status(error.statusCode).json({
                 success: false,
                 message: error.message,
@@ -47,16 +47,60 @@ export async function signUpController(req: Request, res: Response){
         return res.status(500).json({
             success: false,
             message: "An error occurred during registration",
-            
+
         });
 
     }
 }
 
+export async function loginController(req: Request, res: Response, next: NextFunction) {
+    try {
+
+        if (!req.body || typeof req.body !== "object") {
+            return res.status(400).json({
+                success: false,
+                message: "Request body is missing. Please send JSON data.",
+            });
+        }
+
+        const { email, password, deviceInfo } = req.body;
+
+
+        if (typeof email !== "string" || !email.trim() || typeof password !== "string" || !password) {
+
+            res.status(400).json({
+                success: false,
+                message: "Email and password are required.",
+            });
+            return;
+        }
+
+        const result = await loginAdmin(
+            email.trim().toLowerCase(),
+            password,
+            typeof deviceInfo === "string"
+                ? deviceInfo
+                : undefined,
+            req.ip,
+        );
+
+        res.status(200).json({
+            success: true,
+            message: "Login successful.",
+            data: result,
+        });
+
+    } catch (error) {
+        next(error);
+    }
+}
+
+
+
 export async function refreshTokenController(req: Request, res: Response) {
     const { refreshToken } = req.body;
 
-    if(!refreshToken){
+    if (!refreshToken) {
         return res.status(400).json(
             {
                 success: false,
@@ -76,25 +120,25 @@ export async function refreshTokenController(req: Request, res: Response) {
 
 
 export async function getProfiel(req: Request, res: Response) {
-    
-    try{
 
-    const user = await getMyProfile(req.user!.id)    
+    try {
 
-    if (!user) {
-    return res.status(404).json({
-      success: false,
-      message: "User not found",
-    });
-  }
+        const user = await getMyProfile(req.user!.id)
 
-  return res.status(200).json({
-    success: true,
-    message: "User profile fetched successfully",
-    data: user,
-  });
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+            });
+        }
 
-    }catch(error){
+        return res.status(200).json({
+            success: true,
+            message: "User profile fetched successfully",
+            data: user,
+        });
+
+    } catch (error) {
         console.log(error);
 
     }
