@@ -1,18 +1,52 @@
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";     
+import jwt, { type JwtPayload } from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET;
+const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET;
+const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 
-if (!JWT_SECRET) {
-  throw new Error("JWT_SECRET is not defined in the environment variables.");
+if (!ACCESS_SECRET || !REFRESH_SECRET) {
+  throw new Error("JWT_ACCESS_SECRET or JWT_REFRESH_SECRET is not defined in the environment variables.");
 }
 
-export async function hashPassword(password: string){
-    return bcrypt.hash(password, 12);
+type TokenPayload = {
+  userId: string;
+  sessionId: string;
+  sessionVersion: number;
+};
+
+
+function readToken(token: string, secret: string,): TokenPayload {
+  const decoded = jwt.verify(token, secret);
+
+  if (typeof decoded === "string") {
+    throw new Error("Invalid token payload.");
+  }
+
+  const payload = decoded as JwtPayload;
+
+  if (
+    typeof payload.userId !== "string" ||
+    typeof payload.sessionId !== "string" ||
+    typeof payload.sessionVersion !== "number"
+  ) {
+    throw new Error("Invalid token payload.");
+  }
+
+  return {
+    userId: payload.userId,
+    sessionId: payload.sessionId,
+    sessionVersion: payload.sessionVersion,
+  };
+}
+
+
+
+export async function hashPassword(password: string) {
+  return bcrypt.hash(password, 12);
 }
 
 export async function comparePasswords(password: string, passwordsHash: string) {
-    return bcrypt.compare(password, passwordsHash); 
+  return bcrypt.compare(password, passwordsHash);
 }
 
 export function generateAccessToken(payload: {
@@ -21,7 +55,7 @@ export function generateAccessToken(payload: {
   sessionVersion: number;
 }) {
 
-  return jwt.sign(payload, JWT_SECRET as string, { expiresIn: "2m", });
+  return jwt.sign(payload, ACCESS_SECRET as string, { expiresIn: "2m", });
 
 }
 
@@ -31,29 +65,22 @@ export function generateRefreshToken(payload: {
   sessionVersion: number;
   sessionId: string;
 }) {
-  return jwt.sign(payload, JWT_SECRET as string, { expiresIn: "30d", });
+  return jwt.sign(payload, REFRESH_SECRET as string, { expiresIn: "30d", });
 }
 
 
 export function verifyRefeshToken(token: string): { userId: string; sessionVersion: number; sessionId: string } {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET as string) as { userId: string; sessionVersion: number; sessionId: string };
-    return decoded;
+    return readToken(token, REFRESH_SECRET!);
   } catch (error) {
     throw new Error("Invalid refresh token.");
   }
 }
 
 
-export function verifyAccessToken(token: string): { userId: string; sessionVersion: number; sessionId :string } {
+export function verifyAccessToken(token: string): { userId: string; sessionVersion: number; sessionId: string } {
   try {
-    const decoded = jwt.verify(token,JWT_SECRET as string ) as {
-      userId: string;
-      sessionVersion: number;
-      sessionId : string
-    };
-
-    return decoded;
+    return readToken(token, ACCESS_SECRET!);
   } catch {
     throw new Error("Invalid access token.");
   }

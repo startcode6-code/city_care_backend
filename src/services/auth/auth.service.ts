@@ -1,5 +1,5 @@
 import { createHash } from "crypto"
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { sessions } from "../../db/schema/sessions";
 import { users } from "../../db/schema/admin";
@@ -108,26 +108,34 @@ export async function signUp(input: SignUpInput) {
 
 
 
-export async function loginAdmin(email: string, password: string, deviceInfo?: string, ipAddress?: string) {
-  // 1. Find admin by email
-  const [admin] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+
+export async function loginAdmin(email: string, password: string, deviceInfo?: string, ipAddress?: string,) {
+  // 1. Find admin
+  const [admin] = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, email.trim().toLowerCase()))
+    .limit(1);
 
   if (!admin || !admin.isActive) {
     throw new AppError("Invalid email or password.", 401);
   }
 
   // 2. Verify password
-  const isPasswordValid = await comparePasswords(password, admin.password);
+  const isPasswordValid = await comparePasswords(
+    password,
+    admin.password,
+  );
 
   if (!isPasswordValid) {
     throw new AppError("Invalid email or password.", 401);
   }
 
-  // 3. Create session
+  // 3. Create new session and tokens
   const sessionId = crypto.randomUUID();
   const sessionVersion = 1;
 
-  // 4. Generate tokens
+
   const tokenPayload = {
     userId: admin.id,
     sessionId,
@@ -137,24 +145,53 @@ export async function loginAdmin(email: string, password: string, deviceInfo?: s
   const accessToken = generateAccessToken(tokenPayload);
   const refreshToken = generateRefreshToken(tokenPayload);
 
-  // 5. Hash refresh token
-  const tokenHash = createHash("sha256").update(refreshToken).digest("hex");
+  const tokenHash = createHash("sha256")
+    .update(refreshToken)
+    .digest("hex");
 
-  // 6. Session expiry: 30 days
-  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  const expiresAt = new Date(
+    Date.now() + 30 * 24 * 60 * 60 * 1000,
+  );
 
-  // 7. Save session
-  await db.insert(sessions).values({
-    id: sessionId,
-    userId: admin.id,
-    tokenHash,
-    sessionVersion,
-    expiresAt,
-    deviceInfo: deviceInfo || "Unknown",
-    ipAddress: ipAddress || "Unknown",
+  // 4. Revoke old sessions and create the new session atomically
+  await db.transaction(async (tx) => {
+    // Lock this user's row so simultaneous logins are serialized.
+    const [lockedAdmin] = await tx
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.id, admin.id))
+      .for("update");
+
+    if (!lockedAdmin) {
+      throw new AppError("Admin not found.", 404);
+    }
+
+    // Revoke every previous active session for this admin.
+    await tx
+      .update(sessions)
+      .set({
+        isRevoked: true,
+        revokedAt: new Date(),
+      })
+      .where(and(
+        eq(sessions.userId, admin.id),
+        eq(sessions.isRevoked, false),
+      ),
+      );
+
+    // Save the new active session.
+    await tx.insert(sessions).values({
+      id: sessionId,
+      userId: admin.id,
+      tokenHash,
+      sessionVersion,
+      expiresAt,
+      deviceInfo: deviceInfo || "Unknown",
+      ipAddress: ipAddress || "Unknown",
+    });
   });
 
-  // 8. Return safe admin data
+  // 5. Return safe admin data and tokens
   return {
     admin: {
       id: admin.id,
@@ -170,37 +207,89 @@ export async function loginAdmin(email: string, password: string, deviceInfo?: s
 
 
 
+
 export async function refreshaccessToken(oldRefreshToken: string) {
   let payload;
 
   try {
     payload = verifyRefeshToken(oldRefreshToken);
-  } catch (error) {
-    throw new AppError("Invalid refresh token.", 401);
+  } catch {
+    throw new AppError("Invalid or expired refresh token.", 401);
   }
 
-  const sessionId = crypto.randomUUID()
-  const tokenHash = createHash("sha256").update(oldRefreshToken).digest("hex");
+  const oldTokenHash = createHash("sha256")
+    .update(oldRefreshToken)
+    .digest("hex");
 
-  const [session] = await db.select().from(sessions).where(eq(sessions.tokenHash, tokenHash)).limit(1);
+  const [session] = await db
+    .select()
+    .from(sessions)
+    .where(eq(sessions.tokenHash, oldTokenHash))
+    .limit(1);
 
   if (!session) {
-    throw new AppError("Session not found.", 404);
+    throw new AppError("Session not found or refresh token already used.", 401);
+  }
+
+  if (
+    session.id !== payload.sessionId ||
+    session.userId !== payload.userId ||
+    session.sessionVersion !== payload.sessionVersion
+  ) {
+    throw new AppError("Invalid session.", 401);
   }
 
   if (session.isRevoked) {
-    throw new AppError("Your session expired because someone logged in to your account.", 401)
+    throw new AppError(
+      "Your session expired because someone logged in to your account.",
+      401
+    );
   }
 
-  if (session.expiresAt < new Date()) {
+  if (session.expiresAt.getTime() <= Date.now()) {
     throw new AppError("Refresh token has expired.", 401);
   }
 
-  const accessToken = generateAccessToken({ userId: payload.userId, sessionVersion: payload.sessionVersion, sessionId: payload.sessionId });
+  // Same session ID must be used for both tokens.
+  const tokenPayload = {
+    userId: session.userId,
+    sessionId: session.id,
+    sessionVersion: session.sessionVersion,
+  };
+
+  const accessToken = generateAccessToken(tokenPayload);
+  const refreshToken = generateRefreshToken(tokenPayload);
+
+  const newTokenHash = createHash("sha256")
+    .update(refreshToken)
+    .digest("hex");
+
+  // Atomically replace the old refresh-token hash.
+  const updated = await db
+    .update(sessions)
+    .set({
+      tokenHash: newTokenHash,
+    })
+    .where(
+      and(
+        eq(sessions.id, session.id),
+        eq(sessions.tokenHash, oldTokenHash),
+        eq(sessions.isRevoked, false)
+      )
+    )
+    .returning({ id: sessions.id });
+
+  if (updated.length === 0) {
+    throw new AppError(
+      "Refresh token is invalid or has already been used.",
+      401
+    );
+  }
 
   return {
     accessToken,
-  }
+    refreshToken,
+  };
 }
 
 

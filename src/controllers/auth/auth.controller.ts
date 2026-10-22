@@ -114,7 +114,8 @@ export async function refreshTokenController(req: Request, res: Response) {
     return res.status(200).json({
         success: true,
         message: "Access token refreshed successfuly",
-        accessToken: result.accessToken
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken
     })
 }
 

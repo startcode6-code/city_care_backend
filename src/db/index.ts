@@ -1,12 +1,16 @@
 import "dotenv/config";
-import { drizzle } from "drizzle-orm/neon-http";
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL is not defined in the environment variables.");
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error("DATABASE_URL is not defined in environment variables.");
 }
 
-export const db = drizzle(process.env.DATABASE_URL);
+const client = postgres(connectionString, {
+  max: 10,
+  prepare: false,
+});
 
-
-
-// Hello
+export const db = drizzle(client);

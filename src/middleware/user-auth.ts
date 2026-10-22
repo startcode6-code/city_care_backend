@@ -8,62 +8,75 @@ import { AppError } from "../lib/error";
 
 
 export async function authenicateUser(req: Request, res: Response, next: NextFunction) {
-    
-    try{
+  try {
+    const authHeader = req.headers.authorization;
 
-        const authHeader = req.headers.authorization
+    if (!authHeader) {
+      return res.status(401).json({
+        success: false,
+        message: "Authorization header is required",
+      });
+    }
 
-        if(!authHeader){
-            return res.status(401).json({
-                success: false,
-                message: "Authorization header is required"
-            })
-        }
+    const [scheme, token] = authHeader.trim().split(/\s+/);
 
-        const [scheme, token] = authHeader.split(" ");
+    if (scheme !== "Bearer" || !token) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid authorization format",
+      });
+    }
 
-        if(scheme !== "Bearer" || !token){
-            return res.status(401).json({
-                success: false,
-                message: "Invalid authorization format"
-            })
-        }
+    const payload = verifyAccessToken(token);
+    const session = await checkSession(payload.sessionId);
 
-        const paylod = verifyAccessToken(token);
+    // Verify that this session belongs to the token's user.
+    if (
+      session.userId !== payload.userId ||
+      session.sessionVersion !== payload.sessionVersion
+    ) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid session. Please log in again.",
+      });
+    }
 
-        console.log("JWT PAYLOAD:", paylod);
+    if (session.isRevoked) {
+      return res.status(401).json({
+        success: false,
+        message: "Session has been revoked. Please log in again.",
+      });
+    }
 
+    if (new Date(session.expiresAt).getTime() <= Date.now()) {
+      return res.status(401).json({
+        success: false,
+        message: "Session expired. Please log in again.",
 
-        const session = await checkSession(paylod.sessionId)
+      });
+    }
 
-        if (session.isRevoked) {
-        return res.status(401).json({
-            success: false,
-            message: "Session has been revoked",
-        });
-        }
+    req.user = {
+      id: payload.userId,
+      sessionVersion: payload.sessionVersion,
+    };
 
-        req.user = {
-            id: paylod.userId,
-            sessionVersion: paylod.sessionVersion
-        }
+    return next();
+  } catch (error) {
+    if (error instanceof AppError) {
+      return res.status(error.statusCode).json({
+        success: false,
+        status: error.status,
+        message: error.message,
+      });
+    }
 
-        console.log(paylod);
+    console.error("Authentication middleware error:", error);
 
-        next();
-    }catch(error){
-  if (error instanceof AppError) {
-    return res.status(error.statusCode).json({
+    return res.status(401).json({
       success: false,
-      status: error.status,
-      message: error.message,
+      status: "UNAUTHORIZED",
+      message: "Invalid or expired access token",
     });
-  }
-
-  return res.status(401).json({
-    success: false,
-    status: "UNAUTHORIZED",
-    message: "Invalid or expired access token",
-  });
   }
 }
