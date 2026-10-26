@@ -35,7 +35,7 @@ export async function sendPasswordResetEmail({
         throw new Error("SMTP_FROM is not configured.");
     }
 
-    if (!resetLink.startsWith("https://") && !resetLink.startsWith("http://localhost")) {
+    if (!resetLink.startsWith("https://") && !resetLink.startsWith("https://city-care-kohl.vercel.app")) {
         throw new Error("Invalid password reset link.");
     }
 

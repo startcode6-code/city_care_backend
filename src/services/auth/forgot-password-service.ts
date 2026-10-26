@@ -79,9 +79,7 @@ export async function forgotPassword(email: string) {
 
 
 
-export async function resetPassword(
-    input: ResetPasswordInput,
-): Promise<{ message: string }> {
+export async function resetPassword(input: ResetPasswordInput): Promise<{ message: string }> {
     const { token, newPassword } = input;
 
     // 1. Validate new password
