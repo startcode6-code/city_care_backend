@@ -7,7 +7,7 @@ import {
 
 
 
-export const users = pgTable("admins", {
+export const admin = pgTable("admins", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").unique(),

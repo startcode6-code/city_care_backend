@@ -50,6 +50,13 @@
       "when": 1792399715476,
       "tag": "0006_demonic_smasher",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792771874587,
+      "tag": "0007_fair_wolf_cub",
+      "breakpoints": true
     }
   ]
 }

@@ -22,7 +22,7 @@ app.get("/health", (_req, res) => {
 
 // Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/user", authRoutes)
+app.use("/api/admin", authRoutes)
 
 app.use(errorHandler);
 

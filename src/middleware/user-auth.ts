@@ -31,10 +31,7 @@ export async function authenicateUser(req: Request, res: Response, next: NextFun
     const session = await checkSession(payload.sessionId);
 
     // Verify that this session belongs to the token's user.
-    if (
-      session.userId !== payload.userId ||
-      session.sessionVersion !== payload.sessionVersion
-    ) {
+    if (session.userId !== payload.userId || session.sessionVersion !== payload.sessionVersion) {
       return res.status(401).json({
         success: false,
         message: "Invalid session. Please log in again.",

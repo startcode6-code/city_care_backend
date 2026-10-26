@@ -5,12 +5,12 @@ import {
   text,
   timestamp,
 } from "drizzle-orm/pg-core";
-import { users } from "./admin";
+import { admin } from "./admin";
 
 
 export const sessions = pgTable("sessions", {
   id: text("id").primaryKey(),
-  userId: text("user_id").notNull().references(() => users.id),
+  userId: text("user_id").notNull().references(() => admin.id),
   tokenHash: text("token_hash").notNull().unique(),
   deviceInfo: text("device_info"),
   deviceId: text("device_id"),

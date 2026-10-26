@@ -2,7 +2,7 @@ import { createHash } from "crypto"
 import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { sessions } from "../../db/schema/sessions";
-import { users } from "../../db/schema/admin";
+import { admin } from "../../db/schema/admin";
 import { AppError } from "../../lib/error";
 
 import { verifyRefeshToken, generateAccessToken, generateRefreshToken, hashPassword, comparePasswords } from "../../lib/auth";
@@ -21,48 +21,11 @@ export async function signUp(input: SignUpInput) {
 
   const { name, email, phoneNumber, password, role } = input;
 
-  // const [existingUser] = await db.select().from(users).where(eq(users.phoneNumber, phoneNumber)).limit(1);
-
-  // if (existingUser) {
-  //   const user = existingUser;
-
-
-  //   if (!user) {
-  //     throw new AppError("User not found.", 404);
-  //   }
-
-  //   const sessionId = crypto.randomUUID()
-
-  //   await db.update(sessions).set({
-  //     isRevoked: true,
-  //     revokedAt: new Date()
-  //   }).where(eq(sessions.userId, existingUser.id))
-
-  //   const sessionVersion = 1;
-  //   const accessToken = generateAccessToken({ userId: user.id, sessionVersion, sessionId });
-  //   const refreshToken = generateRefreshToken({ userId: user.id, sessionVersion, sessionId });
-
-  //   const tokenHash = createHash("sha256").update(refreshToken).digest("hex");
-
-  //   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
-
-  //   await db.insert(sessions).values({
-  //     id: sessionId,
-  //     userId: user.id,
-  //     tokenHash,
-  //     sessionVersion,
-  //     expiresAt,
-  //     deviceInfo: input.deviceInfo || "Unknown",
-  //     ipAddress: input.ipAddress || "Unknown",
-  //   });
-  //   return { user, accessToken, refreshToken };
-  // }
-
 
   const hashedPassword = await hashPassword(password);
 
 
-  const [user] = await db.insert(users).values({
+  const [user] = await db.insert(admin).values({
     id: crypto.randomUUID(),
     name,
     email,
@@ -71,10 +34,10 @@ export async function signUp(input: SignUpInput) {
     role
 
   }).returning({
-    id: users.id,
-    name: users.name,
-    email: users.email,
-    phoneNumber: users.phoneNumber,
+    id: admin.id,
+    name: admin.name,
+    email: admin.email,
+    phoneNumber: admin.phoneNumber,
   });
 
   if (!user) {
@@ -111,20 +74,20 @@ export async function signUp(input: SignUpInput) {
 
 export async function loginAdmin(email: string, password: string, deviceInfo?: string, ipAddress?: string,) {
   // 1. Find admin
-  const [admin] = await db
+  const [admindb] = await db
     .select()
-    .from(users)
-    .where(eq(users.email, email.trim().toLowerCase()))
+    .from(admin)
+    .where(eq(admin.email, email.trim().toLowerCase()))
     .limit(1);
 
-  if (!admin || !admin.isActive) {
+  if (!admindb || !admindb.isActive) {
     throw new AppError("Invalid email or password.", 401);
   }
 
   // 2. Verify password
   const isPasswordValid = await comparePasswords(
     password,
-    admin.password,
+    admindb.password,
   );
 
   if (!isPasswordValid) {
@@ -137,7 +100,7 @@ export async function loginAdmin(email: string, password: string, deviceInfo?: s
 
 
   const tokenPayload = {
-    userId: admin.id,
+    userId: admindb.id,
     sessionId,
     sessionVersion,
   };
@@ -157,9 +120,9 @@ export async function loginAdmin(email: string, password: string, deviceInfo?: s
   await db.transaction(async (tx) => {
     // Lock this user's row so simultaneous logins are serialized.
     const [lockedAdmin] = await tx
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.id, admin.id))
+      .select({ id: admin.id })
+      .from(admin)
+      .where(eq(admin.id, admin.id))
       .for("update");
 
     if (!lockedAdmin) {
@@ -182,7 +145,7 @@ export async function loginAdmin(email: string, password: string, deviceInfo?: s
     // Save the new active session.
     await tx.insert(sessions).values({
       id: sessionId,
-      userId: admin.id,
+      userId: admindb.id,
       tokenHash,
       sessionVersion,
       expiresAt,
@@ -316,11 +279,7 @@ export async function checkSession(id: string) {
   console.log("Current time:", new Date());
 
   if (session.isRevoked) {
-    throw new AppError(
-      "Your session expired because someone logged in to your account.",
-      401,
-      "REVOKED"
-    );
+    throw new AppError("Your session expired because someone logged in to your account.", 401, "REVOKED");
   }
 
   if (session.expiresAt < new Date()) {
@@ -337,16 +296,16 @@ export async function checkSession(id: string) {
 export async function getMyProfile(userId: string) {
   const [user] = await db
     .select({
-      id: users.id,
-      name: users.name,
-      email: users.email,
-      phoneNumber: users.phoneNumber,
-      isActive: users.isActive,
-      createdAt: users.createdAt,
-      updatedAt: users.updatedAt,
+      id: admin.id,
+      name: admin.name,
+      email: admin.email,
+      phoneNumber: admin.phoneNumber,
+      isActive: admin.isActive,
+      createdAt: admin.createdAt,
+      updatedAt: admin.updatedAt,
     })
-    .from(users)
-    .where(eq(users.id, userId))
+    .from(admin)
+    .where(eq(admin.id, userId))
     .limit(1);
 
   return user;
