@@ -73,6 +73,7 @@ export async function signUp(input: SignUpInput) {
 
 
 
+
 export async function loginAdmin(
   email: string,
   password: string,
@@ -80,24 +81,24 @@ export async function loginAdmin(
   ipAddress?: string,
 ) {
   // 1. Find admin
-  const [admindb] = await db
+  const [data] = await db
     .select()
     .from(admin)
     .where(eq(admin.email, email.trim().toLowerCase()))
     .limit(1);
 
-  if (!admindb || !admindb.isActive) {
-    return new AppError("Invalid email or password.", 401);
+  if (!data || !data.isActive) {
+    throw new AppError("Invalid email or password.", 401);
   }
 
   // 2. Verify password
   const isPasswordValid = await comparePasswords(
     password,
-    admindb.password,
+    data.password,
   );
 
   if (!isPasswordValid) {
-    return new AppError("Invalid email or password.", 401);
+    throw new AppError("Invalid email or password.", 401);
   }
 
   // 3. Create new session and tokens
@@ -105,7 +106,7 @@ export async function loginAdmin(
   const sessionVersion = 1;
 
   const tokenPayload = {
-    userId: admindb.id,
+    userId: data.id,
     sessionId,
     sessionVersion,
   };
@@ -121,20 +122,18 @@ export async function loginAdmin(
     Date.now() + 30 * 24 * 60 * 60 * 1000,
   );
 
-  // 4. Revoke old sessions and create the new session atomically
+  // 4. Revoke old sessions and create a new one atomically
   await db.transaction(async (tx) => {
-    // Lock only the current admin's row
     const [lockedAdmin] = await tx
       .select({ id: admin.id })
       .from(admin)
-      .where(eq(admin.id, admindb.id))
+      .where(eq(admin.id, data.id))
       .for("update");
 
     if (!lockedAdmin) {
-      return new AppError("Admin not found.", 404);
+      throw new AppError("Admin not found.", 404);
     }
 
-    // Revoke previous active sessions
     await tx
       .update(sessions)
       .set({
@@ -143,15 +142,14 @@ export async function loginAdmin(
       })
       .where(
         and(
-          eq(sessions.userId, admindb.id),
+          eq(sessions.userId, data.id),
           eq(sessions.isRevoked, false),
         ),
       );
 
-    // Save the new active session
     await tx.insert(sessions).values({
       id: sessionId,
-      userId: admindb.id,
+      userId: data.id,
       tokenHash,
       sessionVersion,
       expiresAt,
@@ -160,19 +158,20 @@ export async function loginAdmin(
     });
   });
 
-  // 5. Return actual admin data
+  // 5. Return successful login data
   return {
     admin: {
-      id: admindb.id,
-      name: admindb.name,
-      email: admindb.email,
-      phoneNumber: admindb.phoneNumber,
-      role: admindb.role,
+      id: data.id,
+      name: data.name,
+      email: data.email,
+      phoneNumber: data.phoneNumber,
+      role: data.role,
     },
     accessToken,
     refreshToken,
   };
 }
+
 
 
 
