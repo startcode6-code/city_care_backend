@@ -87,7 +87,7 @@ export async function loginAdmin(
     .limit(1);
 
   if (!admindb || !admindb.isActive) {
-    throw new AppError("Invalid email or password.", 401);
+    return new AppError("Invalid email or password.", 401);
   }
 
   // 2. Verify password
@@ -97,7 +97,7 @@ export async function loginAdmin(
   );
 
   if (!isPasswordValid) {
-    throw new AppError("Invalid email or password.", 401);
+    return new AppError("Invalid email or password.", 401);
   }
 
   // 3. Create new session and tokens
@@ -131,7 +131,7 @@ export async function loginAdmin(
       .for("update");
 
     if (!lockedAdmin) {
-      throw new AppError("Admin not found.", 404);
+      return new AppError("Admin not found.", 404);
     }
 
     // Revoke previous active sessions

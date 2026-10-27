@@ -23,7 +23,7 @@ export async function forgotPassword(email: string) {
     const frontendUrl = process.env.FRONTEND_URL?.replace(/\/+$/, "");
 
     if (!frontendUrl) {
-        throw new Error("FRONTEND_URL is not configured.");
+        return new Error("FRONTEND_URL is not configured.");
     }
 
     // 3. Find admin by email
@@ -42,9 +42,7 @@ export async function forgotPassword(email: string) {
     const { token, hashedToken, expiresAt } = generateResetToken();
 
     // 6. Remove previous reset tokens
-    await db
-        .delete(passwordResetToken)
-        .where(eq(passwordResetToken.userId, existingAdmin.id));
+    await db.delete(passwordResetToken).where(eq(passwordResetToken.userId, existingAdmin.id));
 
     // 7. Save new reset token hash
     await db.insert(passwordResetToken).values({
@@ -65,7 +63,7 @@ export async function forgotPassword(email: string) {
             .delete(passwordResetToken)
             .where(eq(passwordResetToken.tokenHash, hashedToken));
 
-        throw error;
+        return error;
     }
 
     return {
