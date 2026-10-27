@@ -21,10 +21,7 @@ export async function forgotPassword(email: string) {
 
     const debugLog = (step: string, details?: unknown) => {
         if (isDebugMode) {
-            console.log(
-                `[Forgot Password] ${new Date().toISOString()} - ${step}`,
-                details ?? "",
-            );
+            console.log(`[Forgot Password] ${new Date().toISOString()} - ${step}`, details ?? "");
         }
     };
 
