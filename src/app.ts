@@ -13,11 +13,23 @@ app.use(express.urlencoded({ extended: true }));
 
 
 // Health check
-app.get("/health", (_req, res) => {
-  res.json({
-    success: true,
-    message: "City Care Hospital Backend is running",
+// app.get("/health", (_req, res) => {
+//   res.json({
+//     success: true,
+//     message: "City Care Hospital Backend is running",
+//   });
+// });
+
+app.use((req, res, next) => {
+  console.log(`[REQUEST] ${req.method} ${req.originalUrl}`);
+
+  res.on("finish", () => {
+    console.log(
+      `[RESPONSE] ${req.method} ${req.originalUrl} - ${res.statusCode}`
+    );
   });
+
+  next();
 });
 
 // Routes
