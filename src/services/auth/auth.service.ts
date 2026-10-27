@@ -72,7 +72,13 @@ export async function signUp(input: SignUpInput) {
 
 
 
-export async function loginAdmin(email: string, password: string, deviceInfo?: string, ipAddress?: string,) {
+
+export async function loginAdmin(
+  email: string,
+  password: string,
+  deviceInfo?: string,
+  ipAddress?: string,
+) {
   // 1. Find admin
   const [admindb] = await db
     .select()
@@ -98,7 +104,6 @@ export async function loginAdmin(email: string, password: string, deviceInfo?: s
   const sessionId = crypto.randomUUID();
   const sessionVersion = 1;
 
-
   const tokenPayload = {
     userId: admindb.id,
     sessionId,
@@ -118,31 +123,32 @@ export async function loginAdmin(email: string, password: string, deviceInfo?: s
 
   // 4. Revoke old sessions and create the new session atomically
   await db.transaction(async (tx) => {
-    // Lock this user's row so simultaneous logins are serialized.
+    // Lock only the current admin's row
     const [lockedAdmin] = await tx
       .select({ id: admin.id })
       .from(admin)
-      .where(eq(admin.id, admin.id))
+      .where(eq(admin.id, admindb.id))
       .for("update");
 
     if (!lockedAdmin) {
       throw new AppError("Admin not found.", 404);
     }
 
-    // Revoke every previous active session for this admin.
+    // Revoke previous active sessions
     await tx
       .update(sessions)
       .set({
         isRevoked: true,
         revokedAt: new Date(),
       })
-      .where(and(
-        eq(sessions.userId, admin.id),
-        eq(sessions.isRevoked, false),
-      ),
+      .where(
+        and(
+          eq(sessions.userId, admindb.id),
+          eq(sessions.isRevoked, false),
+        ),
       );
 
-    // Save the new active session.
+    // Save the new active session
     await tx.insert(sessions).values({
       id: sessionId,
       userId: admindb.id,
@@ -154,19 +160,20 @@ export async function loginAdmin(email: string, password: string, deviceInfo?: s
     });
   });
 
-  // 5. Return safe admin data and tokens
+  // 5. Return actual admin data
   return {
     admin: {
-      id: admin.id,
-      name: admin.name,
-      email: admin.email,
-      phoneNumber: admin.phoneNumber,
-      role: admin.role,
+      id: admindb.id,
+      name: admindb.name,
+      email: admindb.email,
+      phoneNumber: admindb.phoneNumber,
+      role: admindb.role,
     },
     accessToken,
     refreshToken,
   };
 }
+
 
 
 

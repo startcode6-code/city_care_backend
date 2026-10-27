@@ -20,7 +20,7 @@ export async function forgotPassword(email: string) {
     const normalizedEmail = email.trim().toLowerCase();
 
     // 2. Validate frontend URL before creating a token
-    const frontendUrl = process.env.FRONTEND_URL;
+    const frontendUrl = process.env.FRONTEND_URL?.replace(/\/+$/, "");
 
     if (!frontendUrl) {
         throw new Error("FRONTEND_URL is not configured.");
@@ -55,8 +55,7 @@ export async function forgotPassword(email: string) {
     });
 
     // 8. Prepare reset link
-    const resetLink = `${frontendUrl}/admin/reset-password?token=${token}`;
-
+    const resetLink = `${frontendUrl}/admin/reset-password?token=${encodeURIComponent(token)}`;
     // 9. Send email
     try {
         await sendPasswordResetEmail({ to: existingAdmin.email!, resetLink });
@@ -84,14 +83,11 @@ export async function resetPassword(input: ResetPasswordInput): Promise<{ messag
 
     // 1. Validate new password
     if (!/^\d{6}$/.test(newPassword)) {
-        throw new AppError("Password must be exactly 6 digits.", 400);
+        return new AppError("Password must be exactly 6 digits.", 400);
     }
 
     // 2. Hash the reset token
-    const hashedToken = crypto
-        .createHash("sha256")
-        .update(token)
-        .digest("hex");
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 
     const now = new Date();
 
@@ -111,10 +107,7 @@ export async function resetPassword(input: ResetPasswordInput): Promise<{ messag
             .for("update");
 
         if (!resetRecord) {
-            throw new AppError(
-                "Invalid or expired password reset link.",
-                400,
-            );
+            return new AppError("Invalid or expired password reset link.", 400);
         }
 
         // 4. Hash the new password
