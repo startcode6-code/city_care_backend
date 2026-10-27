@@ -42,12 +42,17 @@ export async function sendPasswordResetEmail({ to, resetLink }: PasswordResetEma
     throw new Error("Invalid password reset link.");
   }
 
-  if (parsedUrl.origin !== allowedOrigin || parsedUrl.pathname !== "/admin/reset-password") {
+  if (parsedUrl.origin !== allowedOrigin ||
+    parsedUrl.pathname !== "/admin/reset-password"
+  ) {
     throw new Error("Invalid password reset link.");
   }
 
   await transporter.sendMail({
-    from, to, subject: "Reset Your Hospital Admin Password", text: `
+    from,
+    to,
+    subject: "Reset Your Hospital Admin Password",
+    text: `
 Hello,
 
 We received a request to reset your admin account password.
