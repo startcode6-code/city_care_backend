@@ -17,12 +17,9 @@ type ResetPasswordInput = {
 
 
 export async function forgotPassword(email: string) {
-    const isDebugMode = process.env.NODE_ENV !== "production";
 
     const debugLog = (step: string, details?: unknown) => {
-        if (isDebugMode) {
-            console.log(`[Forgot Password] ${new Date().toISOString()} - ${step}`, details ?? "");
-        }
+        console.log(`[Forgot Password] ${new Date().toISOString()} - ${step}`, details ?? "");
     };
 
     try {
@@ -50,8 +47,7 @@ export async function forgotPassword(email: string) {
 
         if (
             !["http:", "https:"].includes(parsedFrontendUrl.protocol) ||
-            (process.env.NODE_ENV === "production" &&
-                parsedFrontendUrl.protocol !== "https:")
+            (process.env.NODE_ENV === "production" && parsedFrontendUrl.protocol !== "https:")
         ) {
             throw new Error("FRONTEND_URL must use a valid HTTP/HTTPS URL.");
         }
