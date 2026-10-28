@@ -127,10 +127,7 @@ export async function forgotPassword(email: string) {
 
             debugLog("STEP 11: Email sent successfully");
         } catch (emailError) {
-            console.error(
-                "[Forgot Password] EMAIL SENDING FAILED:",
-                emailError,
-            );
+            console.error("[Forgot Password] EMAIL SENDING FAILED:", emailError);
 
             // STEP 12: Delete unused reset token if email failed
             try {
