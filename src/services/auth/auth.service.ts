@@ -1,11 +1,12 @@
 import { createHash } from "crypto"
-import { and, eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { db } from "../../db";
 import { sessions } from "../../db/schema/sessions";
 import { admin } from "../../db/schema/admin";
 import { AppError } from "../../lib/error";
 
 import { verifyRefeshToken, generateAccessToken, generateRefreshToken, hashPassword, comparePasswords } from "../../lib/auth";
+import { id } from "zod/locales";
 
 type SignUpInput = {
   name: string;
@@ -23,6 +24,19 @@ export async function signUp(input: SignUpInput) {
 
 
   const hashedPassword = await hashPassword(password);
+
+  const [existingAdmin] = await db.select({ id: admin.id, email: admin.email, phoneNumber: admin.phoneNumber }).from(admin).where(or(
+    eq(admin.email, email),
+    eq(admin.phoneNumber, phoneNumber)
+  )).limit(1)
+
+  if (existingAdmin?.email === email) {
+    throw new AppError("This email address is alreday registered", 409);
+  }
+
+  if (existingAdmin?.phoneNumber === phoneNumber) {
+    throw new AppError("This phone number is alreday registered", 409);
+  }
 
 
   const [user] = await db.insert(admin).values({

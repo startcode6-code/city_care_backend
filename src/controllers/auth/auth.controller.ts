@@ -38,10 +38,7 @@ export async function signUpController(req: Request, res: Response) {
         console.error("Error in signUpController:", error);
 
         if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                message: error.message,
-            });
+            return res.status(error.statusCode).json({ success: false, message: error.message, });
         }
 
         return res.status(500).json({

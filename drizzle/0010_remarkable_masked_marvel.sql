@@ -1,0 +1,3 @@
+CREATE TYPE "public"."doctor_language" AS ENUM('ENGLISH', 'HINDI', 'MANDARIN', 'SPANISH', 'FRENCH', 'GERMAN', 'ARABIC', 'BENGALI', 'URDU', 'TAMIL', 'TELUGU', 'MARATHI', 'PUNJABI', 'GUJARATI', 'JAPANESE');--> statement-breakpoint
+ALTER TABLE "doctors" ALTER COLUMN "languages" SET DATA TYPE "public"."doctor_language"[] USING "languages"::"public"."doctor_language"[];--> statement-breakpoint
+ALTER TABLE "doctors" ALTER COLUMN "languages" DROP DEFAULT;

@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import authRoutes from "./routes/auth/auth.routes";
+import doctorRoutes from "./routes/doctor/doctor.routes"
 import { errorHandler } from "./middleware/error-handler";
 
 const app = express();
@@ -35,6 +36,7 @@ app.use((req, res, next) => {
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", authRoutes)
+app.use("/api", doctorRoutes)
 
 app.use(errorHandler);
 
