@@ -36,7 +36,7 @@ app.use((req, res, next) => {
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", authRoutes)
-app.use("/api", doctorRoutes)
+app.use("/api/doctors", doctorRoutes)
 
 app.use(errorHandler);
 

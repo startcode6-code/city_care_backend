@@ -3,6 +3,7 @@ import { db } from "../../db";
 import { doctors } from "../../db/schema/doctor";
 import { AppError } from "../../lib/error";
 import { randomBytes } from "node:crypto";
+import { desc } from "drizzle-orm";
 
 
 interface CreateDoctorInput {
@@ -63,6 +64,98 @@ export async function createDoctorService(data: CreateDoctorInput) {
         .returning();
 
     return doctor;
+}
+
+export async function updateDoctorService(doctorId: string, data: Partial<CreateDoctorInput>) {
+
+    const [existingDoctor] = await db
+        .select()
+        .from(doctors)
+        .where(eq(doctors.id, doctorId))
+        .limit(1);
+
+    if (!existingDoctor) {
+        throw new AppError("Doctor not found.", 404);
+    }
+
+    const updateData: Partial<typeof doctors.$inferInsert> = {};
+
+    if (data.name !== undefined) {
+        const name = data.name.trim();
+
+        updateData.name = name;
+        updateData.slug = generateSlug(name);
+
+        const [duplicateDoctor] = await db
+            .select({ id: doctors.id })
+            .from(doctors)
+            .where(eq(doctors.slug, updateData.slug))
+            .limit(1);
+
+        if (duplicateDoctor && duplicateDoctor.id !== doctorId) {
+            throw new AppError("A doctor with this slug already exists.", 409);
+        }
+    }
+
+    if (data.department !== undefined) {
+        updateData.department = data.department.trim();
+    }
+
+    if (data.role !== undefined) {
+        updateData.role = data.role.trim();
+    }
+
+    if (data.years !== undefined) {
+        updateData.years = data.years;
+    }
+
+    if (data.days !== undefined) {
+        updateData.days = data.days.trim();
+    }
+
+    if (data.languages !== undefined) {
+        updateData.languages = data.languages;
+    }
+
+    if (data.bio !== undefined) {
+        updateData.bio = data.bio.trim();
+    }
+
+    const [updatedDoctor] = await db
+        .update(doctors)
+        .set(updateData)
+        .where(eq(doctors.id, doctorId))
+        .returning();
+
+    return updatedDoctor;
+}
+
+
+export async function getDoctorsService() {
+    const allDoctors = await db
+        .select()
+        .from(doctors);
+
+    return allDoctors;
+}
+
+export async function deleteDoctorService(doctorId: string) {
+    const [existingDoctor] = await db
+        .select({ id: doctors.id })
+        .from(doctors)
+        .where(eq(doctors.id, doctorId))
+        .limit(1);
+
+    if (!existingDoctor) {
+        throw new AppError("Doctor not found.", 404);
+    }
+
+    const [deletedDoctor] = await db
+        .delete(doctors)
+        .where(eq(doctors.id, doctorId))
+        .returning();
+
+    return deletedDoctor;
 }
 
 
