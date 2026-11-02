@@ -41,6 +41,8 @@ export const doctors = pgTable("doctors",
             .array()
             .notNull(),
         bio: text("bio").notNull(),
+        photoUrl: text("photo_url"),
+        photoPublicId: text("photo_public_id"),
     },
     (table) => [uniqueIndex("doctors_slug_unique").on(table.slug)]
 );

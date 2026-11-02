@@ -3,8 +3,7 @@ import { db } from "../../db";
 import { doctors } from "../../db/schema/doctor";
 import { AppError } from "../../lib/error";
 import { randomBytes } from "node:crypto";
-import { desc } from "drizzle-orm";
-
+import { uploadImageToCloudinary, deleteImageFromCloudinary } from "../cloudinary/cloudinary.service";
 
 interface CreateDoctorInput {
     userId: string;
@@ -32,6 +31,8 @@ interface CreateDoctorInput {
         | "JAPANESE"
     )[];
     bio: string;
+    photoUrl: string,
+    photoPublicId: string
 }
 
 export async function createDoctorService(data: CreateDoctorInput) {
@@ -60,6 +61,8 @@ export async function createDoctorService(data: CreateDoctorInput) {
             days: data.days.trim(),
             languages: data.languages,
             bio: data.bio.trim(),
+            photoUrl: data.photoUrl,
+            photoPublicId: data.photoPublicId
         })
         .returning();
 
@@ -157,6 +160,98 @@ export async function deleteDoctorService(doctorId: string) {
 
     return deletedDoctor;
 }
+
+
+
+export async function uploadDoctorPhotoService(doctorId: string, file: Express.Multer.File) {
+    const [existingDoctor] = await db
+        .select()
+        .from(doctors)
+        .where(eq(doctors.id, doctorId))
+        .limit(1);
+
+    if (!existingDoctor) {
+        throw new AppError("Doctor not found.", 404);
+    }
+
+    if (!file || !file.buffer) {
+        throw new AppError("Invalid image file.", 400);
+    }
+
+    // Upload new image to Cloudinary
+    const uploadedImage = await uploadImageToCloudinary({ buffer: file.buffer });
+
+    let updatedDoctor;
+
+    try {
+        const [result] = await db
+            .update(doctors)
+            .set({
+                photoUrl: uploadedImage.secure_url,
+                photoPublicId: uploadedImage.public_id,
+            })
+            .where(eq(doctors.id, doctorId))
+            .returning();
+
+        if (!result) {
+            throw new AppError("Failed to update doctor photo.", 500);
+        }
+
+        updatedDoctor = result;
+    } catch (error) {
+
+        await deleteImageFromCloudinary(uploadedImage.public_id
+        ).catch((cleanupError) => {
+            console.error("New image cleanup failed:", cleanupError);
+        });
+
+        throw error;
+    }
+
+    // Delete old image only after successful DB update
+    if (
+        existingDoctor.photoPublicId &&
+        existingDoctor.photoPublicId !== uploadedImage.public_id
+    ) {
+        try {
+            await deleteImageFromCloudinary(
+                existingDoctor.photoPublicId
+            );
+        } catch (error) {
+            console.error("Old doctor photo deletion failed:", error);
+        }
+    }
+
+    return updatedDoctor;
+}
+
+
+
+export async function deleteDoctorPhotoService(doctorId: string) {
+    const [existingDoctor] = await db
+        .select()
+        .from(doctors)
+        .where(eq(doctors.id, doctorId))
+        .limit(1);
+
+    if (!existingDoctor) {
+        throw new AppError("Doctor not found.", 404);
+    }
+
+    if (!existingDoctor.photoPublicId) {
+        throw new AppError("Doctor photo not found.", 404);
+    }
+
+    const [updatedDoctor] = await db
+        .update(doctors)
+        .set({ photoUrl: null, photoPublicId: null })
+        .where(eq(doctors.id, doctorId))
+        .returning();
+
+    await deleteImageFromCloudinary(existingDoctor.photoPublicId);
+    return updatedDoctor;
+}
+
 
 
 function generateSlug(name: string): string {

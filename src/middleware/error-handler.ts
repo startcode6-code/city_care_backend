@@ -1,6 +1,8 @@
 
 import type { NextFunction, Request, Response } from "express";
 import { AppError } from "../lib/error";
+import multer from "multer";
+
 
 export function errorHandler(
     err: unknown,
@@ -25,6 +27,15 @@ export function errorHandler(
             success: false,
             message: err.message,
         });
+    }
+
+    if (err instanceof multer.MulterError) {
+        if (err.code === "LIMIT_FILE_SIZE") {
+            return res.status(413).json({
+                success: false,
+                message: "File too large. Maximum allowed size is 10 MB.",
+            });
+        }
     }
 
     return res.status(500).json({

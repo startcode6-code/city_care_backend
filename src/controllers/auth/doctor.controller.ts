@@ -1,6 +1,6 @@
 
-import type { Request, Response } from "express";
-import { createDoctorService, updateDoctorService, getDoctorsService, deleteDoctorService } from "../../services/auth/doctor.service";
+import type { Request, Response, NextFunction } from "express";
+import { createDoctorService, updateDoctorService, getDoctorsService, deleteDoctorService } from "../../services/doctor/doctor.service";
 import { AppError } from "../../lib/error";
 
 const supportedLanguages = [
@@ -11,15 +11,20 @@ const supportedLanguages = [
 ] as const;
 
 
-export async function createDoctor(req: Request, res: Response) {
+
+export async function createDoctor(
+    req: Request,
+    res: Response,
+    next: NextFunction
+) {
     try {
         const userId = req.user?.id;
 
         if (!userId) {
-            return res.status(401).json({
-                success: false,
-                message: "Unauthorized. Please login again.",
-            });
+            throw new AppError(
+                "Unauthorized. Please login again.",
+                401
+            );
         }
 
         const {
@@ -31,40 +36,90 @@ export async function createDoctor(req: Request, res: Response) {
             days,
             languages,
             bio,
+            photoUrl,
+            photoPublicId,
         } = req.body;
 
+        // Validate required text fields
         if (
+            typeof slug !== "string" || !slug.trim() ||
             typeof name !== "string" || !name.trim() ||
             typeof department !== "string" || !department.trim() ||
             typeof role !== "string" || !role.trim() ||
             typeof days !== "string" || !days.trim() ||
-            typeof bio !== "string" || !bio.trim() ||
+            typeof bio !== "string" || !bio.trim()
+        ) {
+            throw new AppError(
+                "Please provide all required doctor fields.",
+                400
+            );
+        }
+
+        // Validate experience
+        if (
             typeof years !== "number" ||
             !Number.isInteger(years) ||
-            years < 0 ||
+            years < 0
+        ) {
+            throw new AppError(
+                "Invalid doctor experience.",
+                400
+            );
+        }
+
+        // Validate languages
+        if (
             !Array.isArray(languages) ||
             languages.length === 0 ||
             !languages.every((language: unknown) =>
                 typeof language === "string" &&
-                supportedLanguages.includes(language as (typeof supportedLanguages)[number])
+                supportedLanguages.includes(
+                    language as (typeof supportedLanguages)[number]
+                )
             )
         ) {
-            return res.status(400).json({
-                success: false,
-                message: "Please provide all required doctor fields correctly.",
-            });
+            throw new AppError(
+                "Please provide valid doctor languages.",
+                400
+            );
+        }
+
+        // Validate Cloudinary photo URL
+        let validPhotoUrl = false;
+
+        try {
+            const parsedUrl = new URL(photoUrl);
+
+            validPhotoUrl =
+                parsedUrl.protocol === "https:" &&
+                parsedUrl.hostname === "res.cloudinary.com";
+        } catch {
+            validPhotoUrl = false;
+        }
+
+        if (
+            !validPhotoUrl ||
+            typeof photoPublicId !== "string" ||
+            !photoPublicId.trim()
+        ) {
+            throw new AppError(
+                "Valid doctor photo is required.",
+                400
+            );
         }
 
         const doctor = await createDoctorService({
             userId,
-            slug,
-            name,
-            department,
-            role,
+            slug: slug.trim(),
+            name: name.trim(),
+            department: department.trim(),
+            role: role.trim(),
             years,
-            days,
+            days: days.trim(),
             languages,
-            bio,
+            bio: bio.trim(),
+            photoUrl,
+            photoPublicId: photoPublicId.trim(),
         });
 
         return res.status(201).json({
@@ -72,21 +127,12 @@ export async function createDoctor(req: Request, res: Response) {
             message: "Doctor created successfully.",
             data: doctor,
         });
-    } catch (error: unknown) {
 
-        if (error instanceof AppError) {
-            return res.status(error.statusCode).json({
-                success: false,
-                message: error.message,
-            });
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error while creating doctor.",
-        });
+    } catch (error) {
+        next(error);
     }
 }
+
 
 
 export async function updateDoctor(req: Request, res: Response) {
