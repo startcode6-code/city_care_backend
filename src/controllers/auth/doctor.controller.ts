@@ -1,6 +1,6 @@
 
 import type { Request, Response, NextFunction } from "express";
-import { createDoctorService, updateDoctorService, getDoctorsService, deleteDoctorService } from "../../services/doctor/doctor.service";
+import { createDoctorService, updateDoctorService, getDoctorsService, deleteDoctorService, deleteDoctorPhotoService } from "../../services/doctor/doctor.service";
 import { AppError } from "../../lib/error";
 
 const supportedLanguages = [
@@ -289,6 +289,8 @@ export async function deleteDoctor(req: Request, res: Response) {
                 message: "A valid doctor ID is required.",
             });
         }
+
+        await deleteDoctorPhotoService(id)
 
         await deleteDoctorService(id);
 

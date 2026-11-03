@@ -158,6 +158,8 @@ export async function deleteDoctorService(doctorId: string) {
         .where(eq(doctors.id, doctorId))
         .returning();
 
+
+
     return deletedDoctor;
 }
 
