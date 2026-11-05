@@ -6,19 +6,13 @@ import { uploadImageToCloudinary } from "../../services/cloudinary/cloudinary.se
 
 
 
-export async function uploadDoctorPhotoOnly(
-    req: Request,
-    res: Response,
-    next: NextFunction
-) {
+export async function uploadDoctorPhotoOnly(req: Request, res: Response, next: NextFunction) {
     try {
         if (!req.file) {
             throw new AppError("Please select a photo.", 400);
         }
 
-        const uploadedImage = await uploadImageToCloudinary({
-            buffer: req.file.buffer,
-        });
+        const uploadedImage = await uploadImageToCloudinary({ buffer: req.file.buffer });
 
         return res.status(200).json({
             success: true,
@@ -33,11 +27,33 @@ export async function uploadDoctorPhotoOnly(
     }
 }
 
-export async function deleteDoctorPhoto(
-    req: Request,
-    res: Response,
-    next: NextFunction
-) {
+
+export async function updateDoctorPhoto(req: Request, res: Response, next: NextFunction) {
+    try {
+        const { id } = req.params;
+
+        if (!id || typeof id !== "string" || !id.trim()) {
+            throw new AppError("Invalid doctor ID.", 400);
+        }
+
+        if (!req.file) {
+            throw new AppError("Please select a photo.", 400);
+        }
+
+        const doctor = await uploadDoctorPhotoService(id, req.file);
+
+        return res.status(200).json({
+            success: true,
+            message: "Doctor photo updated successfully.",
+            data: doctor,
+        });
+
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function deleteDoctorPhoto(req: Request, res: Response, next: NextFunction) {
     try {
         const { id } = req.params;
 
