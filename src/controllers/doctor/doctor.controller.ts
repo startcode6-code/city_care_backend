@@ -270,6 +270,21 @@ export async function getDoctors(req: Request, res: Response) {
     }
 }
 
+export async function getPublicDoctors(req: Request, res: Response, next: NextFunction) {
+    try {
+        const doctors = await getDoctorsService();
+
+        return res.status(200).json({
+            success: true,
+            message: "Doctors fetched successfully.",
+            results: doctors.length,
+            data: doctors,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 export async function deleteDoctor(req: Request, res: Response) {
     try {
         const userId = req.user?.id;
