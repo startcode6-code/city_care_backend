@@ -181,7 +181,7 @@ export async function uploadDoctorPhotoService(doctorId: string, file: Express.M
     }
 
     // Upload new image to Cloudinary
-    const uploadedImage = await uploadImageToCloudinary({ buffer: file.buffer });
+    const uploadedImage = await uploadImageToCloudinary({ buffer: file.buffer, folderName: "doctors" });
 
     let updatedDoctor;
 

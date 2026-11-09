@@ -12,7 +12,7 @@ export async function uploadDoctorPhotoOnly(req: Request, res: Response, next: N
             throw new AppError("Please select a photo.", 400);
         }
 
-        const uploadedImage = await uploadImageToCloudinary({ buffer: req.file.buffer });
+        const uploadedImage = await uploadImageToCloudinary({ buffer: req.file.buffer, folderName: "doctors" });
 
         return res.status(200).json({
             success: true,

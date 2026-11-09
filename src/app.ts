@@ -3,6 +3,7 @@ import cors from "cors";
 import authRoutes from "./routes/auth/auth.routes";
 import doctorRoutes from "./routes/doctor/doctor.routes"
 import { errorHandler } from "./middleware/error-handler";
+import serviceRoutes from "./routes/service/service.routes"
 
 const app = express();
 
@@ -14,12 +15,12 @@ app.use(express.urlencoded({ extended: true }));
 
 
 // Health check
-// app.get("/health", (_req, res) => {
-//   res.json({
-//     success: true,
-//     message: "City Care Hospital Backend is running",
-//   });
-// });
+app.get("/health", (_req, res) => {
+  res.json({
+    success: true,
+    message: "City Care Hospital Backend is running",
+  });
+});
 
 app.use((req, res, next) => {
   console.log(`[REQUEST] ${req.method} ${req.originalUrl}`);
@@ -37,6 +38,7 @@ app.use((req, res, next) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", authRoutes)
 app.use("/api/doctors", doctorRoutes)
+app.use("/api/service", serviceRoutes)
 
 app.use(errorHandler);
 

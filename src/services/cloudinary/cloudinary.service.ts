@@ -1,17 +1,20 @@
 import cloudinary from "../../config/cloudinary.ts";
 
 interface UploadImageInput {
-    buffer: Buffer;
+    buffer: Buffer,
+    folderName: string
+
 }
 
 export function uploadImageToCloudinary(file: UploadImageInput): Promise<{
     secure_url: string;
     public_id: string;
+
 }> {
     return new Promise((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
             {
-                folder: "kp-hospital/doctors",
+                folder: `kp-hospital/${file.folderName}`,
                 resource_type: "image",
             },
             (error, result) => {
