@@ -3,7 +3,9 @@ import cors from "cors";
 import authRoutes from "./routes/auth/auth.routes";
 import doctorRoutes from "./routes/doctor/doctor.routes"
 import { errorHandler } from "./middleware/error-handler";
-import serviceRoutes from "./routes/service/service.routes"
+import serviceRoutes from "./routes/service/service.routes";
+import youtubeVideoRoutes from "./routes/youtube-video/youtube-video.routes";
+
 
 const app = express();
 
@@ -39,6 +41,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/admin", authRoutes)
 app.use("/api/doctors", doctorRoutes)
 app.use("/api/service", serviceRoutes)
+app.use("/api/youtube-video", youtubeVideoRoutes)
+
 
 app.use(errorHandler);
 
