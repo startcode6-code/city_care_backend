@@ -1,23 +1,41 @@
 
 import type { Request, Response, NextFunction } from "express";
-import { createBlog, updateBlog, deleteBlog, uploadServicePhoto, getBlog } from "../../services/blog/blog.service";
+
+import {
+    createBlog,
+    updateBlog,
+    deleteBlog,
+    uploadBlogPhoto,
+    getBlog,
+} from "../../services/blog/blog.service";
+
 import { AppError } from "../../lib/error";
+
 import { uploadImageToCloudinary } from "../../services/cloudinary/cloudinary.service";
 
-
+// ==========================================
 // CREATE BLOG
-export async function createBlogController(req: Request, res: Response, next: NextFunction) {
+// ==========================================
+
+export async function createBlogController(
+    req: Request,
+    res: Response,
+    next: NextFunction
+) {
     try {
-        const userId = (req as Request & { user?: { id: string } }).user?.id;
+        const userId = (
+            req as Request & { user?: { id: string } }
+        ).user?.id;
 
         if (!userId) {
-            return res.status(401).json({
-                success: false,
-                message: "Unauthorized. Admin ID not found.",
-            });
+            throw new AppError(
+                "Unauthorized. Admin ID not found.",
+                401
+            );
         }
 
         const newBlog = await createBlog(userId, req.body);
+
         return res.status(201).json({
             success: true,
             message: "Blog created successfully.",
@@ -28,29 +46,27 @@ export async function createBlogController(req: Request, res: Response, next: Ne
     }
 }
 
+// ==========================================
 // UPDATE BLOG
+// ==========================================
+
 export async function updateBlogController(
     req: Request,
     res: Response,
     next: NextFunction
 ) {
     try {
-        const id = req.params.id;
+        const { id } = req.params;
 
         if (typeof id !== "string" || !id.trim()) {
-            return res.status(400).json({
-                success: false,
-                message: "Valid blog ID is required.",
-            });
+            throw new AppError("Valid blog ID is required.", 400);
         }
 
-        console.log("BLOG UPDATE BODY:", req.body);
-
         if (!req.body || Object.keys(req.body).length === 0) {
-            return res.status(400).json({
-                success: false,
-                message: "Please provide blog fields to update.",
-            });
+            throw new AppError(
+                "Please provide blog fields to update.",
+                400
+            );
         }
 
         const updatedBlog = await updateBlog(id, req.body);
@@ -65,15 +81,20 @@ export async function updateBlogController(
     }
 }
 
+// ==========================================
 // DELETE BLOG
-export async function deleteBlogController(req: Request, res: Response, next: NextFunction) {
+// ==========================================
+
+export async function deleteBlogController(
+    req: Request,
+    res: Response,
+    next: NextFunction
+) {
     try {
         const { id } = req.params;
+
         if (typeof id !== "string" || !id.trim()) {
-            return res.status(400).json({
-                success: false,
-                message: "Valid blog ID is required.",
-            });
+            throw new AppError("Valid blog ID is required.", 400);
         }
 
         const result = await deleteBlog(id);
@@ -90,21 +111,51 @@ export async function deleteBlogController(req: Request, res: Response, next: Ne
     }
 }
 
+// ==========================================
+// UPLOAD BLOG PHOTO ONLY
+// ==========================================
 
-export async function uploadBlogPhotoOnly(req: Request, res: Response, next: NextFunction) {
+export async function uploadBlogPhotoOnly(
+    req: Request,
+    res: Response,
+    next: NextFunction
+) {
     try {
-        if (!req.file) {
+        if (!req.file || !req.file.buffer) {
             throw new AppError("Please select a photo.", 400);
         }
 
-        const uploadedImage = await uploadImageToCloudinary({ buffer: req.file.buffer, folderName: "blog" });
+        const allowedTypes = [
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+        ];
+
+        if (!allowedTypes.includes(req.file.mimetype)) {
+            throw new AppError(
+                "Only JPG, JPEG, PNG and WEBP images are allowed.",
+                400
+            );
+        }
+
+        if (req.file.size > 5 * 1024 * 1024) {
+            throw new AppError(
+                "Image size must not exceed 5MB.",
+                400
+            );
+        }
+
+        const uploadedImage = await uploadImageToCloudinary({
+            buffer: req.file.buffer,
+            folderName: "kp-hospital/blogs",
+        });
 
         return res.status(200).json({
             success: true,
-            message: "Photo uploaded successfully.",
+            message: "Blog photo uploaded successfully.",
             data: {
-                photoUrl: uploadedImage.secure_url,
-                photoPublicId: uploadedImage.public_id,
+                imageUrl: uploadedImage.secure_url,
+                imagePublicId: uploadedImage.public_id,
             },
         });
     } catch (error) {
@@ -112,52 +163,57 @@ export async function uploadBlogPhotoOnly(req: Request, res: Response, next: Nex
     }
 }
 
+// ==========================================
+// UPDATE BLOG PHOTO
+// ==========================================
 
-export async function updateBlogPhoto(req: Request, res: Response, next: NextFunction) {
+export async function updateBlogPhoto(
+    req: Request,
+    res: Response,
+    next: NextFunction
+) {
     try {
         const { id } = req.params;
 
-        if (!id || typeof id !== "string" || !id.trim()) {
+        if (typeof id !== "string" || !id.trim()) {
             throw new AppError("Invalid blog ID.", 400);
         }
 
-        if (!req.file) {
+        if (!req.file || !req.file.buffer) {
             throw new AppError("Please select a photo.", 400);
         }
 
-        const doctor = await uploadServicePhoto(id, req.file);
+        const updatedBlog = await uploadBlogPhoto(id, req.file);
 
         return res.status(200).json({
             success: true,
             message: "Blog photo updated successfully.",
-            data: doctor,
+            data: updatedBlog,
         });
-
     } catch (error) {
         next(error);
     }
 }
 
-export async function getBlogController(req: Request, res: Response) {
+// ==========================================
+// GET ALL BLOGS
+// ==========================================
+
+export async function getBlogController(
+    req: Request,
+    res: Response,
+    next: NextFunction
+) {
     try {
-        const userId = req.user?.id;
-
-
-
-        const doctorsList = await getBlog();
+        const blogs = await getBlog();
 
         return res.status(200).json({
             success: true,
             message: "Blog fetched successfully.",
-            results: doctorsList.length,
-            data: doctorsList,
+            results: blogs.length,
+            data: blogs,
         });
-    } catch (error: unknown) {
-        console.error("Fetch blog error:", error);
-
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error while fetching blog.",
-        });
+    } catch (error) {
+        next(error);
     }
 }

@@ -1,9 +1,7 @@
 
 import { Router } from "express";
-
 import { createBlogController, deleteBlogController, updateBlogController, uploadBlogPhotoOnly, getBlogController, updateBlogPhoto } from "../../controllers/blog/blog.controller";
 import { uploadDoctorPhoto as uploadMiddleware } from "../../middleware/upload";
-
 import { authenicateUser } from "../../middleware/user-auth";
 
 const router = Router();
