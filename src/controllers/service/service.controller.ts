@@ -224,12 +224,7 @@ export async function getServiceController(req: Request, res: Response) {
     try {
         const userId = req.user?.id;
 
-        if (!userId) {
-            return res.status(401).json({
-                success: false,
-                message: "Unauthorized. Please login again.",
-            });
-        }
+
 
         const doctorsList = await getService();
 
