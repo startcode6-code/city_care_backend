@@ -7,29 +7,23 @@ import {
     deleteBlog,
     uploadBlogPhoto,
     getBlog,
+    updateBlogStatusService
 } from "../../services/blog/blog.service";
-
 import { AppError } from "../../lib/error";
-
 import { uploadImageToCloudinary } from "../../services/cloudinary/cloudinary.service";
 
-// ==========================================
-// CREATE BLOG
-// ==========================================
 
+// CREATE BLOG
 export async function createBlogController(
     req: Request,
     res: Response,
     next: NextFunction
 ) {
     try {
-        const userId = (
-            req as Request & { user?: { id: string } }
-        ).user?.id;
+        const userId = (req as Request & { user?: { id: string } }).user?.id;
 
         if (!userId) {
-            throw new AppError(
-                "Unauthorized. Admin ID not found.",
+            throw new AppError("Unauthorized. Admin ID not found.",
                 401
             );
         }
@@ -46,10 +40,7 @@ export async function createBlogController(
     }
 }
 
-// ==========================================
 // UPDATE BLOG
-// ==========================================
-
 export async function updateBlogController(
     req: Request,
     res: Response,
@@ -81,10 +72,7 @@ export async function updateBlogController(
     }
 }
 
-// ==========================================
 // DELETE BLOG
-// ==========================================
-
 export async function deleteBlogController(
     req: Request,
     res: Response,
@@ -111,10 +99,7 @@ export async function deleteBlogController(
     }
 }
 
-// ==========================================
 // UPLOAD BLOG PHOTO ONLY
-// ==========================================
-
 export async function uploadBlogPhotoOnly(
     req: Request,
     res: Response,
@@ -163,10 +148,7 @@ export async function uploadBlogPhotoOnly(
     }
 }
 
-// ==========================================
 // UPDATE BLOG PHOTO
-// ==========================================
-
 export async function updateBlogPhoto(
     req: Request,
     res: Response,
@@ -195,10 +177,7 @@ export async function updateBlogPhoto(
     }
 }
 
-// ==========================================
 // GET ALL BLOGS
-// ==========================================
-
 export async function getBlogController(
     req: Request,
     res: Response,
@@ -217,3 +196,43 @@ export async function getBlogController(
         next(error);
     }
 }
+
+export const updateBlogStatus = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+        if (typeof id !== "string" || !id.trim()) {
+            throw new AppError("Invalid blog ID.", 400);
+        }
+
+        const userId = req.user?.id;
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Unauthorized",
+            });
+        }
+
+        if (!status) {
+            return res.status(400).json({
+                success: false,
+                message: "Status is required",
+            });
+        }
+
+        const updatedBlog = await updateBlogStatusService({
+            id,
+            userId,
+            status,
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: "Blog status updated successfully",
+            data: updatedBlog,
+        });
+    } catch (error) {
+        next(error);
+    }
+};

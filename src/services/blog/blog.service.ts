@@ -11,6 +11,12 @@ import {
 
 type BlogStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
 
+interface UpdateBlogStatusInput {
+    id: string;
+    userId: string;
+    status: BlogStatus;
+}
+
 interface CreateBlogInput {
     title: string;
     slug?: string;
@@ -217,8 +223,7 @@ export async function deleteBlog(blogId: string) {
         .where(eq(blog.id, blogId));
 
     if (existingBlog.imagePublicId) {
-        await deleteImageFromCloudinary(existingBlog.imagePublicId)
-            .catch((error) => console.error("Blog image deletion failed:", error));
+        await deleteImageFromCloudinary(existingBlog.imagePublicId).catch((error) => console.error("Blog image deletion failed:", error));
     }
 
     return {
@@ -303,40 +308,7 @@ export async function uploadBlogPhoto(blogId: string, file: Express.Multer.File)
     return updatedBlog;
 }
 
-// DELETE BLOG PHOTO
-export async function deleteBlogPhoto(blogId: string) {
-    const [existingBlog] = await db
-        .select()
-        .from(blog)
-        .where(eq(blog.id, blogId))
-        .limit(1);
 
-    if (!existingBlog) {
-        throw new AppError("Blog not found.", 404);
-    }
-
-    if (!existingBlog.imagePublicId) {
-        throw new AppError("Blog image not found.", 404);
-    }
-
-    const [updatedBlog] = await db
-        .update(blog)
-        .set({
-            imageUrl: null,
-            imagePublicId: null,
-            imageAlt: null,
-            updatedAt: new Date(),
-        })
-        .where(eq(blog.id, blogId))
-        .returning();
-
-    await deleteImageFromCloudinary(existingBlog.imagePublicId)
-        .catch((error) => {
-            console.error("Blog image deletion failed:", error);
-        });
-
-    return updatedBlog;
-}
 
 // GET ALL BLOGS
 export async function getBlog() {
@@ -347,17 +319,44 @@ export async function getBlog() {
     return allBlog;
 }
 
-// GET SINGLE BLOG
-export async function getBlogById(blogId: string) {
-    const [result] = await db
-        .select()
-        .from(blog)
-        .where(eq(blog.id, blogId))
-        .limit(1);
 
-    if (!result) {
-        throw createError("Blog not found.", 404);
+export const updateBlogStatusService = async ({ id, userId, status }: UpdateBlogStatusInput) => {
+    const validStatuses: BlogStatus[] = [
+        "DRAFT",
+        "PUBLISHED",
+        "ARCHIVED",
+    ];
+
+    if (!validStatuses.includes(status)) {
+        throw new AppError("Invalid blog status", 400);
     }
 
-    return result;
-}
+    const [existingBlog] = await db
+        .select()
+        .from(blog)
+        .where(eq(blog.id, id))
+        .limit(1);
+
+    if (!existingBlog) {
+        throw new AppError("Blog not found", 404);
+    }
+
+    if (existingBlog.userId !== userId) {
+        throw new AppError("You are not authorized to update this blog", 403);
+    }
+
+    const [updatedBlog] = await db
+        .update(blog)
+        .set({
+            status,
+            publishedAt:
+                status === "PUBLISHED"
+                    ? existingBlog.publishedAt ?? new Date()
+                    : existingBlog.publishedAt,
+            updatedAt: new Date(),
+        })
+        .where(eq(blog.id, id))
+        .returning();
+
+    return updatedBlog;
+};

@@ -1,6 +1,6 @@
 
 import { Router } from "express";
-import { createBlogController, deleteBlogController, updateBlogController, uploadBlogPhotoOnly, getBlogController, updateBlogPhoto } from "../../controllers/blog/blog.controller";
+import { createBlogController, deleteBlogController, updateBlogController, updateBlogStatus, uploadBlogPhotoOnly, getBlogController, updateBlogPhoto } from "../../controllers/blog/blog.controller";
 import { uploadDoctorPhoto as uploadMiddleware } from "../../middleware/upload";
 import { authenicateUser } from "../../middleware/user-auth";
 
@@ -13,6 +13,11 @@ router.post("/upload-photo", uploadMiddleware.single("photo"), uploadBlogPhotoOn
 router.post("/update-photo/:id", uploadMiddleware.single("photo"), updateBlogPhoto);
 router.get("/get-blog/public", getBlogController);
 router.get("/get-blog", authenicateUser, getBlogController);
+router.patch(
+    "/update-status/:id",
+    authenicateUser,
+    updateBlogStatus
+);
 
 
 
