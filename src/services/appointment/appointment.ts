@@ -4,6 +4,8 @@ import { db } from "../../db";
 import { appointment } from "../../db/schema/appointment";
 import { AppError } from "../../lib/error";
 import { eq } from "drizzle-orm";
+import { desc } from "drizzle-orm";
+
 
 interface CreateAppointmentInput {
     name: string;
@@ -200,6 +202,25 @@ export async function deleteAppointmentService(id: string) {
 
         throw new AppError(
             "Something went wrong while deleting appointment.",
+            500
+        );
+    }
+}
+
+
+export async function getAppointmentsService() {
+    try {
+        const appointments = await db
+            .select()
+            .from(appointment)
+            .orderBy(desc(appointment.createdAt));
+
+        return appointments;
+    } catch (error) {
+        console.error("Get Appointments Error:", error);
+
+        throw new AppError(
+            "Failed to fetch appointments.",
             500
         );
     }

@@ -1,6 +1,6 @@
 
 import type { Request, Response, NextFunction } from "express";
-import { createAppointmentService, updateAppointmentService, deleteAppointmentService } from "../../services/appointment/appointment";
+import { createAppointmentService, updateAppointmentService, deleteAppointmentService, getAppointmentsService } from "../../services/appointment/appointment";
 import { AppError } from "../../lib/error";
 
 export const createAppointment = async (req: Request, res: Response, next: NextFunction) => {
@@ -169,6 +169,24 @@ export const deleteAppointment = async (req: Request, res: Response, next: NextF
             data: deletedAppointment,
         });
 
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getAppointments = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const appointments = await getAppointmentsService();
+
+        return res.status(200).json({
+            success: true,
+            results: appointments.length,
+            data: appointments,
+        });
     } catch (error) {
         next(error);
     }
