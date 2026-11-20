@@ -7,6 +7,7 @@ import serviceRoutes from "./routes/service/service.routes";
 import youtubeVideoRoutes from "./routes/youtube-video/youtube-video.routes";
 import blogRoutes from "./routes/blog/blog.routes"
 import appointmentRoutes from "./routes/appointment/appointment.routes";
+import dashboard from "./routes/dashboard/dashboard.routes"
 
 
 
@@ -47,6 +48,8 @@ app.use("/api/service", serviceRoutes)
 app.use("/api/youtube-video", youtubeVideoRoutes)
 app.use("/api/blog", blogRoutes)
 app.use("/api/appointment", appointmentRoutes)
+app.use("/api/dashboard", dashboard)
+
 
 
 
